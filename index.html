@@ -1,0 +1,746 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>store.withersmp.net - Official Webstore</title>
+    
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <!-- Chart.js -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+    <!-- Tailwind Config for Custom Colors & Animations -->
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        fleet: {
+                            bg: '#0b0b0f',
+                            purple: '#8b5cf6',
+                            cyan: '#22d3ee',
+                            card: 'rgba(255, 255, 255, 0.05)',
+                            border: 'rgba(255, 255, 255, 0.1)'
+                        }
+                    },
+                    fontFamily: {
+                        sans: ['Inter', 'system-ui', 'sans-serif'],
+                        mono: ['Consolas', 'monospace']
+                    },
+                    animation: {
+                        'pulse-glow': 'pulse-glow 2s cubic-bezier(0.4, 0, 0.6, 1) infinite',
+                    },
+                    keyframes: {
+                        'pulse-glow': {
+                            '0%, 100%': { opacity: 1, boxShadow: '0 0 15px rgba(34,211,238,0.5)' },
+                            '50%': { opacity: .7, boxShadow: '0 0 25px rgba(139,92,246,0.8)' },
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+
+    <style>
+        /* Base page follows the light background rule, while the app container is the requested dark theme */
+        body { background-color: #f1f5f9; margin: 0; padding: 0; display: flex; justify-content: center; }
+        
+        /* App Container mimicking the requested dark theme */
+        #app-container {
+            width: 100%;
+            max-width: 1600px;
+            min-height: 100vh;
+            background-color: #0b0b0f;
+            color: #ffffff;
+            box-shadow: 0 0 50px rgba(0,0,0,0.5);
+            position: relative;
+            overflow-x: hidden;
+        }
+
+        /* Glassmorphism utility */
+        .glass-card {
+            background: rgba(255, 255, 255, 0.03);
+            backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            transition: all 0.3s ease;
+        }
+        .glass-card:hover {
+            border-color: rgba(139, 92, 246, 0.5);
+            box-shadow: 0 0 20px rgba(139, 92, 246, 0.2);
+            transform: translateY(-2px);
+        }
+
+        /* Custom Scrollbar */
+        ::-webkit-scrollbar { width: 8px; }
+        ::-webkit-scrollbar-track { background: #0b0b0f; }
+        ::-webkit-scrollbar-thumb { background: #8b5cf6; border-radius: 4px; }
+        ::-webkit-scrollbar-thumb:hover { background: #22d3ee; }
+
+        /* Chart Container Strict Styling */
+        .chart-container {
+            position: relative;
+            width: 100%;
+            max-width: 800px;
+            margin-left: auto;
+            margin-right: auto;
+            height: 350px;
+            max-height: 400px;
+            background: rgba(0,0,0,0.3);
+            border-radius: 12px;
+            padding: 1rem;
+            border: 1px solid rgba(255,255,255,0.05);
+        }
+
+        .neon-text {
+            text-shadow: 0 0 10px rgba(34, 211, 238, 0.7);
+        }
+        
+        .nav-link {
+            position: relative;
+            cursor: pointer;
+            transition: color 0.2s;
+        }
+        .nav-link:hover { color: #22d3ee; }
+        .nav-link::after {
+            content: '';
+            position: absolute;
+            width: 0; height: 2px;
+            bottom: -4px; left: 0;
+            background: linear-gradient(90deg, #8b5cf6, #22d3ee);
+            transition: width 0.3s ease;
+        }
+        .nav-link:hover::after, .nav-link.active::after { width: 100%; }
+
+        /* Product Image Placeholder CSS */
+        .product-img-ph {
+            width: 100%; height: 160px;
+            background: linear-gradient(135deg, #1e1e24 0%, #2a2a35 100%);
+            display: flex; align-items: center; justify-content: center;
+            font-size: 3rem; border-radius: 8px 8px 0 0;
+        }
+    </style>
+</head>
+<body>
+
+<!-- Chosen Palette: Dark Gaming (#0b0b0f background, #8b5cf6 purple, #22d3ee cyan) within a light body wrapper -->
+<!-- Application Structure Plan: A Single Page Application (SPA) designed to simulate a dynamic Minecraft webstore. Features a Home dashboard for entry, a Store browsing section with functional filtering, and a Checkout flow. JavaScript handles view toggling, cart state management, and chart rendering to ensure a seamless, non-reloading user experience. -->
+<!-- Visualization & Content Choices: Particle canvas for engaging hero background. Chart.js line chart to display server activity, fulfilling analytical data requirements while fitting the gaming theme. Standard HTML/CSS grid for product lists. -->
+<!-- CONFIRMATION: NO SVG graphics used. NO Mermaid JS used. Using unicode and CSS for visual elements. -->
+
+<div id="app-container">
+
+    <!-- Sticky Navigation -->
+    <nav class="fixed top-0 w-full max-w-[1600px] bg-[#0b0b0f]/80 backdrop-blur-md border-b border-fleet-border z-50 transition-all duration-300">
+        <div class="px-6 py-4 flex justify-between items-center">
+            <div class="flex items-center gap-2 cursor-pointer" onclick="navigate('home')">
+                <span class="text-2xl font-black bg-clip-text text-transparent bg-gradient-to-r from-fleet-purple to-fleet-cyan">WitherSMP</span>
+            </div>
+            
+            <div class="hidden md:flex gap-8 font-semibold text-gray-300">
+                <span class="nav-link active" onclick="navigate('home')">Home</span>
+                <span class="nav-link" onclick="navigate('store')">Store</span>
+                <span class="nav-link" onclick="navigate('store', 'ranks')">Ranks</span>
+                <span class="nav-link" onclick="navigate('store', 'crates')">Crates</span>
+                <span class="nav-link">Support</span>
+            </div>
+
+            <div class="flex items-center gap-4">
+                <button onclick="navigate('checkout')" class="relative text-gray-300 hover:text-white transition group">
+                    <span class="text-xl">🛒</span>
+                    <span id="cart-badge" class="absolute -top-2 -right-2 bg-fleet-purple text-xs font-bold w-5 h-5 flex items-center justify-center rounded-full shadow-[0_0_10px_rgba(139,92,246,0.8)]">0</span>
+                </button>
+                <button class="hidden md:block bg-white/10 hover:bg-white/20 border border-white/20 px-4 py-2 rounded-lg font-semibold transition">
+                    Login
+                </button>
+            </div>
+        </div>
+    </nav>
+
+    <!-- MAIN CONTENT AREA -->
+    <main class="pt-20 pb-16 min-h-screen">
+        
+        <!-- ==================== HOME VIEW ==================== -->
+        <div id="view-home" class="page-view animate-fade-in">
+            
+            <!-- Hero Section -->
+            <section class="relative h-[600px] flex items-center justify-center overflow-hidden border-b border-fleet-border">
+                <canvas id="particles-canvas" class="absolute inset-0 z-0"></canvas>
+                <div class="absolute inset-0 bg-gradient-to-b from-transparent to-[#0b0b0f] z-10"></div>
+                
+                <div class="relative z-20 text-center px-4 max-w-4xl">
+                    <div class="inline-block px-4 py-1 rounded-full border border-fleet-cyan/30 bg-fleet-cyan/10 text-fleet-cyan text-sm font-semibold mb-6 shadow-[0_0_15px_rgba(34,211,238,0.2)]">
+                        ⚡ Season 5 is now LIVE!
+                    </div>
+                    <h1 class="text-6xl md:text-8xl font-black mb-6 tracking-tighter">
+                        CONQUER THE <br>
+                        <span class="bg-clip-text text-transparent bg-gradient-to-r from-fleet-purple via-pink-500 to-fleet-cyan neon-text">GALAXY</span>
+                    </h1>
+                    <p class="text-xl text-gray-400 mb-10 max-w-2xl mx-auto">
+                        Welcome to the official WitherSMP webstore. Enhance your gameplay with premium ranks, exclusive crates, and unique cosmetics.
+                    </p>
+                    
+                    <div class="flex flex-col sm:flex-row gap-6 justify-center items-center">
+                        <button onclick="navigate('store')" class="bg-gradient-to-r from-fleet-purple to-fleet-cyan hover:scale-105 transition-transform duration-300 text-white font-bold py-4 px-10 rounded-xl text-lg shadow-[0_0_20px_rgba(139,92,246,0.5)]">
+                            Browse Store 🛍️
+                        </button>
+                        
+                        <div class="relative group cursor-pointer" onclick="copyIP()">
+                            <div class="absolute -inset-1 bg-gradient-to-r from-fleet-cyan to-fleet-purple rounded-xl blur opacity-30 group-hover:opacity-60 transition duration-1000 group-hover:duration-200"></div>
+                            <div class="relative bg-black border border-white/10 px-8 py-4 rounded-xl flex items-center gap-3">
+                                <span class="text-fleet-cyan font-mono text-lg font-bold">store.withersmp.net</span>
+                                <span class="text-gray-500 group-hover:text-white transition">📋</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Store Categories Section -->
+            <section class="py-20 px-6 max-w-7xl mx-auto">
+                <div class="text-center mb-12">
+                    <h2 class="text-3xl font-bold mb-4">Explore Categories</h2>
+                    <p class="text-gray-400">Everything you need to dominate the server.</p>
+                </div>
+                
+                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+                    <!-- Card 1 -->
+                    <div class="glass-card p-6 rounded-2xl text-center cursor-pointer group" onclick="navigate('store', 'ranks')">
+                        <div class="w-16 h-16 mx-auto bg-gradient-to-br from-yellow-400 to-orange-500 rounded-full flex items-center justify-center text-3xl shadow-[0_0_20px_rgba(250,204,21,0.4)] mb-4 group-hover:scale-110 transition">
+                            👑
+                        </div>
+                        <h3 class="text-xl font-bold mb-2">Global Ranks</h3>
+                        <p class="text-gray-400 text-sm">Stand out with exclusive perks and commands.</p>
+                    </div>
+                    <!-- Card 2 -->
+                    <div class="glass-card p-6 rounded-2xl text-center cursor-pointer group" onclick="navigate('store', 'crates')">
+                        <div class="w-16 h-16 mx-auto bg-gradient-to-br from-fleet-purple to-pink-500 rounded-full flex items-center justify-center text-3xl shadow-[0_0_20px_rgba(139,92,246,0.4)] mb-4 group-hover:scale-110 transition">
+                            🔑
+                        </div>
+                        <h3 class="text-xl font-bold mb-2">Crate Keys</h3>
+                        <p class="text-gray-400 text-sm">Unlock rare items, gear, and legendary loot.</p>
+                    </div>
+                    <!-- Card 3 -->
+                    <div class="glass-card p-6 rounded-2xl text-center cursor-pointer group" onclick="navigate('store', 'coins')">
+                        <div class="w-16 h-16 mx-auto bg-gradient-to-br from-green-400 to-emerald-600 rounded-full flex items-center justify-center text-3xl shadow-[0_0_20px_rgba(74,222,128,0.4)] mb-4 group-hover:scale-110 transition">
+                            🪙
+                        </div>
+                        <h3 class="text-xl font-bold mb-2">FleetCoins</h3>
+                        <p class="text-gray-400 text-sm">Premium currency for the in-game black market.</p>
+                    </div>
+                    <!-- Card 4 -->
+                    <div class="glass-card p-6 rounded-2xl text-center cursor-pointer group" onclick="navigate('store', 'cosmetics')">
+                        <div class="w-16 h-16 mx-auto bg-gradient-to-br from-fleet-cyan to-blue-500 rounded-full flex items-center justify-center text-3xl shadow-[0_0_20px_rgba(34,211,238,0.4)] mb-4 group-hover:scale-110 transition">
+                            🎩
+                        </div>
+                        <h3 class="text-xl font-bold mb-2">Cosmetics</h3>
+                        <p class="text-gray-400 text-sm">Pets, particles, disguises, and custom titles.</p>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Featured Products -->
+            <section class="py-12 px-6 max-w-7xl mx-auto border-t border-white/5">
+                <div class="flex justify-between items-end mb-10">
+                    <div>
+                        <h2 class="text-3xl font-bold mb-2">Featured Items</h2>
+                        <p class="text-gray-400">Our most popular packages this week.</p>
+                    </div>
+                    <button onclick="navigate('store')" class="text-fleet-cyan hover:text-white transition font-semibold">View All ➔</button>
+                </div>
+                
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-8" id="featured-products-container">
+                    <!-- Populated by JS -->
+                </div>
+            </section>
+
+            <!-- Data Analyst Requirement: Server Statistics -->
+            <section class="py-16 px-6 max-w-7xl mx-auto bg-white/5 rounded-3xl border border-white/5 mt-10">
+                <div class="text-center mb-8">
+                    <h2 class="text-2xl font-bold text-fleet-cyan mb-2">Server Economy Metrics</h2>
+                    <p class="text-gray-400 text-sm max-w-2xl mx-auto">
+                        Track the growth of the WitherSMP community. This interactive chart displays the active player count and economy volume over the past week, illustrating peak engagement times.
+                    </p>
+                </div>
+                <!-- Strict Chart Container -->
+                <div class="chart-container">
+                    <canvas id="serverStatsChart"></canvas>
+                </div>
+            </section>
+
+        </div>
+
+        <!-- ==================== STORE VIEW ==================== -->
+        <div id="view-store" class="page-view hidden pt-10 px-6 max-w-7xl mx-auto">
+            <div class="mb-10 text-center md:text-left">
+                <h1 class="text-4xl font-bold mb-4">Official Store</h1>
+                <p class="text-gray-400 max-w-2xl">
+                    Filter by category to find the perfect upgrade. All purchases automatically process within 1-5 minutes and directly support the server's hosting and development.
+                </p>
+            </div>
+
+            <div class="flex flex-col md:flex-row gap-8">
+                <!-- Sidebar Filters -->
+                <aside class="w-full md:w-64 flex-shrink-0">
+                    <div class="glass-card p-4 rounded-xl sticky top-28">
+                        <h3 class="font-bold text-lg mb-4 text-fleet-purple border-b border-white/10 pb-2">Categories</h3>
+                        <ul class="space-y-2" id="category-filters">
+                            <li class="cursor-pointer px-3 py-2 rounded bg-fleet-purple/20 text-fleet-purple font-semibold filter-btn" data-cat="all">💠 All Items</li>
+                            <li class="cursor-pointer px-3 py-2 rounded hover:bg-white/5 text-gray-400 hover:text-white transition filter-btn" data-cat="ranks">👑 Ranks</li>
+                            <li class="cursor-pointer px-3 py-2 rounded hover:bg-white/5 text-gray-400 hover:text-white transition filter-btn" data-cat="crates">🔑 Crate Keys</li>
+                            <li class="cursor-pointer px-3 py-2 rounded hover:bg-white/5 text-gray-400 hover:text-white transition filter-btn" data-cat="coins">🪙 FleetCoins</li>
+                            <li class="cursor-pointer px-3 py-2 rounded hover:bg-white/5 text-gray-400 hover:text-white transition filter-btn" data-cat="cosmetics">🎩 Cosmetics</li>
+                        </ul>
+                    </div>
+                </aside>
+
+                <!-- Product Grid -->
+                <div class="flex-1">
+                    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6" id="store-grid">
+                        <!-- Populated by JS -->
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- ==================== CHECKOUT VIEW ==================== -->
+        <div id="view-checkout" class="page-view hidden pt-10 px-6 max-w-5xl mx-auto">
+            <div class="mb-10 text-center">
+                <h1 class="text-4xl font-bold mb-4 text-fleet-cyan">Checkout</h1>
+                <p class="text-gray-400">Review your cart and enter your Minecraft username.</p>
+            </div>
+
+            <div class="flex flex-col lg:flex-row gap-8">
+                <!-- Left: Info & Payment -->
+                <div class="flex-1 space-y-6">
+                    <div class="glass-card p-6 rounded-2xl">
+                        <h2 class="text-2xl font-bold mb-4 flex items-center gap-2">🕹️ Player Information</h2>
+                        <label class="block text-sm font-medium text-gray-400 mb-2">Minecraft IGN (In-Game Name)</label>
+                        <input type="text" id="ign-input" placeholder="e.g. Notch" class="w-full bg-[#0b0b0f] border border-fleet-border rounded-lg px-4 py-3 text-white focus:outline-none focus:border-fleet-cyan transition shadow-inner">
+                        <p class="text-xs text-red-400 mt-2 hidden" id="ign-error">Please enter a valid username.</p>
+                    </div>
+
+                    <div class="glass-card p-6 rounded-2xl">
+                        <h2 class="text-2xl font-bold mb-4">💳 Payment Method</h2>
+                        <div class="grid grid-cols-3 gap-4">
+                            <div class="border border-fleet-purple bg-fleet-purple/10 rounded-lg p-4 text-center cursor-pointer transition">
+                                <span class="block text-2xl mb-1">💳</span>
+                                <span class="text-sm font-semibold">Card</span>
+                            </div>
+                            <div class="border border-white/10 hover:border-white/30 rounded-lg p-4 text-center cursor-pointer transition">
+                                <span class="block text-2xl mb-1">🌐</span>
+                                <span class="text-sm font-semibold">PayPal</span>
+                            </div>
+                            <div class="border border-white/10 hover:border-white/30 rounded-lg p-4 text-center cursor-pointer transition">
+                                <span class="block text-2xl mb-1">📱</span>
+                                <span class="text-sm font-semibold">UPI</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Right: Cart Summary -->
+                <div class="w-full lg:w-96 flex-shrink-0">
+                    <div class="glass-card p-6 rounded-2xl sticky top-28 border-fleet-cyan/30">
+                        <h2 class="text-2xl font-bold mb-6 border-b border-white/10 pb-4">Order Summary</h2>
+                        
+                        <div id="checkout-cart-list" class="space-y-4 mb-6 max-h-64 overflow-y-auto pr-2">
+                            <!-- Populated by JS -->
+                            <div class="text-gray-500 text-center italic py-4">Your cart is empty.</div>
+                        </div>
+
+                        <div class="border-t border-white/10 pt-4 space-y-2">
+                            <div class="flex justify-between text-gray-400">
+                                <span>Subtotal</span>
+                                <span id="checkout-subtotal">$0.00</span>
+                            </div>
+                            <div class="flex justify-between text-fleet-cyan font-bold text-xl mt-2">
+                                <span>Total</span>
+                                <span id="checkout-total">$0.00</span>
+                            </div>
+                        </div>
+
+                        <button onclick="processCheckout()" class="w-full mt-6 bg-gradient-to-r from-fleet-cyan to-blue-500 hover:from-fleet-cyan hover:to-blue-400 text-white font-bold py-3 rounded-lg shadow-[0_0_15px_rgba(34,211,238,0.4)] transition-all">
+                            Complete Purchase 🔒
+                        </button>
+                        <p class="text-center text-xs text-gray-500 mt-4">By purchasing, you agree to our Terms of Service.</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+    </main>
+
+    <!-- Footer -->
+    <footer class="bg-black/50 border-t border-white/5 pt-12 pb-6 px-6">
+        <div class="max-w-7xl mx-auto flex flex-col md:flex-row justify-between items-center md:items-start gap-8">
+            <div class="text-center md:text-left">
+                <h3 class="text-2xl font-black bg-clip-text text-transparent bg-gradient-to-r from-fleet-purple to-fleet-cyan mb-2">WitherSMP</h3>
+                <p class="text-gray-500 text-sm max-w-xs">
+                    Not an official Minecraft product. Not approved by or associated with Mojang or Microsoft.
+                </p>
+            </div>
+            
+            <div class="flex gap-12 text-sm">
+                <div>
+                    <h4 class="font-bold text-white mb-3">Links</h4>
+                    <ul class="space-y-2 text-gray-400">
+                        <li><a href="#" class="hover:text-fleet-cyan transition">Home</a></li>
+                        <li><a href="#" class="hover:text-fleet-cyan transition">Store</a></li>
+                        <li><a href="#" class="hover:text-fleet-cyan transition">Rules</a></li>
+                    </ul>
+                </div>
+                <div>
+                    <h4 class="font-bold text-white mb-3">Legal</h4>
+                    <ul class="space-y-2 text-gray-400">
+                        <li><a href="#" class="hover:text-fleet-cyan transition">Terms of Service</a></li>
+                        <li><a href="#" class="hover:text-fleet-cyan transition">Privacy Policy</a></li>
+                        <li><a href="#" class="hover:text-fleet-cyan transition">Imprint</a></li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+        <div class="max-w-7xl mx-auto mt-12 pt-6 border-t border-white/10 text-center text-gray-600 text-sm">
+            &copy; 2026 WitherSMP Network. All rights reserved.
+        </div>
+    </footer>
+
+    <!-- Toast Notification -->
+    <div id="toast" class="fixed bottom-4 right-4 bg-fleet-purple text-white px-6 py-3 rounded-lg shadow-xl transform translate-y-20 opacity-0 transition-all duration-300 z-50 pointer-events-none">
+        Item added to cart!
+    </div>
+
+</div>
+
+<!-- JavaScript Logic -->
+<script>
+    // --- Data Store ---
+    const products = [
+        { id: 'p1', name: 'Emperor Rank', desc: 'The ultimate rank. Includes fly mode, nick, and max homes.', price: 49.99, cat: 'ranks', icon: '👑', color: '#fbbf24' },
+        { id: 'p2', name: 'Commander Rank', desc: 'Mid-tier rank with great perks and kits.', price: 29.99, cat: 'ranks', icon: '⚔️', color: '#8b5cf6' },
+        { id: 'p3', name: 'Legendary Crate Key', desc: 'Guaranteed epic or legendary loot.', price: 4.99, cat: 'crates', icon: '🗝️', color: '#f43f5e' },
+        { id: 'p4', name: 'Mythic Crate x5', desc: 'Bundle of 5 mythic crates. Save 10%!', price: 19.99, cat: 'crates', icon: '📦', color: '#22d3ee' },
+        { id: 'p5', name: '10,000 FleetCoins', desc: 'Basic currency pack.', price: 9.99, cat: 'coins', icon: '💰', color: '#4ade80' },
+        { id: 'p6', name: '50,000 FleetCoins', desc: 'Best value currency pack.', price: 39.99, cat: 'coins', icon: '💎', color: '#3b82f6' },
+        { id: 'p7', name: 'Dragon Wings', desc: 'Cosmetic particle wings.', price: 14.99, cat: 'cosmetics', icon: '🐉', color: '#dc2626' },
+        { id: 'p8', name: 'Neon Halo', desc: 'Glowing animated halo cosmetic.', price: 9.99, cat: 'cosmetics', icon: '✨', color: '#a855f7' },
+    ];
+
+    let cart = [];
+    let currentCategory = 'all';
+
+    // --- Navigation & Routing ---
+    function navigate(viewId, category = null) {
+        // Hide all views
+        document.querySelectorAll('.page-view').forEach(el => el.classList.add('hidden'));
+        // Show target
+        document.getElementById(`view-${viewId}`).classList.remove('hidden');
+        document.getElementById(`view-${viewId}`).classList.add('animate-fade-in');
+        
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+
+        // Update Nav visual
+        document.querySelectorAll('.nav-link').forEach(el => el.classList.remove('active'));
+        const navLinks = document.querySelectorAll('.nav-link');
+        if(viewId === 'home') navLinks[0].classList.add('active');
+        if(viewId === 'store') navLinks[1].classList.add('active');
+
+        // Handle category pre-selection
+        if (viewId === 'store' && category) {
+            filterStore(category);
+        } else if (viewId === 'store') {
+            filterStore('all');
+        }
+
+        if (viewId === 'checkout') {
+            renderCheckoutCart();
+        }
+    }
+
+    // --- Store & Filtering Logic ---
+    function renderProductCards(containerId, items) {
+        const container = document.getElementById(containerId);
+        container.innerHTML = '';
+        
+        items.forEach(item => {
+            const card = document.createElement('div');
+            card.className = 'glass-card rounded-2xl overflow-hidden flex flex-col group';
+            card.innerHTML = `
+                <div class="product-img-ph relative overflow-hidden" style="color: ${item.color}">
+                    <div class="absolute inset-0 bg-current opacity-10 group-hover:opacity-20 transition"></div>
+                    <span class="relative z-10 transform group-hover:scale-125 transition duration-500">${item.icon}</span>
+                </div>
+                <div class="p-6 flex-1 flex flex-col">
+                    <div class="flex justify-between items-start mb-2">
+                        <h3 class="text-xl font-bold text-white">${item.name}</h3>
+                        <span class="bg-white/10 text-xs px-2 py-1 rounded text-gray-300 capitalize">${item.cat}</span>
+                    </div>
+                    <p class="text-gray-400 text-sm mb-6 flex-1">${item.desc}</p>
+                    <div class="flex justify-between items-center mt-auto">
+                        <span class="text-2xl font-black text-fleet-cyan">$${item.price}</span>
+                        <button onclick="addToCart('${item.id}')" class="bg-white/10 hover:bg-fleet-purple text-white px-4 py-2 rounded-lg font-bold transition-colors">
+                            Add +
+                        </button>
+                    </div>
+                </div>
+            `;
+            container.appendChild(card);
+        });
+    }
+
+    function filterStore(cat) {
+        currentCategory = cat;
+        // Update filter UI
+        document.querySelectorAll('.filter-btn').forEach(btn => {
+            if(btn.dataset.cat === cat) {
+                btn.className = 'cursor-pointer px-3 py-2 rounded bg-fleet-purple/20 text-fleet-purple font-semibold filter-btn';
+            } else {
+                btn.className = 'cursor-pointer px-3 py-2 rounded hover:bg-white/5 text-gray-400 hover:text-white transition filter-btn';
+            }
+        });
+
+        // Filter and render
+        const filtered = cat === 'all' ? products : products.filter(p => p.cat === cat);
+        renderProductCards('store-grid', filtered);
+    }
+
+    // Event listeners for filters
+    document.querySelectorAll('.filter-btn').forEach(btn => {
+        btn.addEventListener('click', (e) => {
+            filterStore(e.target.dataset.cat);
+        });
+    });
+
+    // --- Cart Logic ---
+    function addToCart(productId) {
+        const product = products.find(p => p.id === productId);
+        cart.push(product);
+        updateCartBadge();
+        showToast(`Added ${product.name} to cart!`);
+    }
+
+    function removeFromCart(index) {
+        cart.splice(index, 1);
+        updateCartBadge();
+        renderCheckoutCart();
+    }
+
+    function updateCartBadge() {
+        const badge = document.getElementById('cart-badge');
+        badge.innerText = cart.length;
+        badge.classList.add('animate-ping');
+        setTimeout(() => badge.classList.remove('animate-ping'), 300);
+    }
+
+    function renderCheckoutCart() {
+        const container = document.getElementById('checkout-cart-list');
+        const subTotalEl = document.getElementById('checkout-subtotal');
+        const totalEl = document.getElementById('checkout-total');
+        
+        container.innerHTML = '';
+        let total = 0;
+
+        if (cart.length === 0) {
+            container.innerHTML = '<div class="text-gray-500 text-center italic py-4">Your cart is empty.</div>';
+            subTotalEl.innerText = '$0.00';
+            totalEl.innerText = '$0.00';
+            return;
+        }
+
+        cart.forEach((item, index) => {
+            total += item.price;
+            const row = document.createElement('div');
+            row.className = 'flex justify-between items-center bg-white/5 p-3 rounded-lg border border-white/5';
+            row.innerHTML = `
+                <div class="flex items-center gap-3">
+                    <span style="color:${item.color}">${item.icon}</span>
+                    <div>
+                        <div class="font-bold text-sm">${item.name}</div>
+                        <div class="text-xs text-fleet-cyan">$${item.price}</div>
+                    </div>
+                </div>
+                <button onclick="removeFromCart(${index})" class="text-gray-500 hover:text-red-400 transition px-2">✕</button>
+            `;
+            container.appendChild(row);
+        });
+
+        subTotalEl.innerText = `$${total.toFixed(2)}`;
+        totalEl.innerText = `$${total.toFixed(2)}`;
+    }
+
+    function processCheckout() {
+        const ign = document.getElementById('ign-input').value.trim();
+        const err = document.getElementById('ign-error');
+        
+        if (!ign) {
+            err.classList.remove('hidden');
+            return;
+        }
+        err.classList.add('hidden');
+
+        if (cart.length === 0) {
+            alert('Your cart is empty!');
+            return;
+        }
+
+        alert(`Processing secure payment for ${ign}...\nTotal: $${cart.reduce((a,b)=>a+b.price,0).toFixed(2)}\n\n(Simulated Success)`);
+        cart = [];
+        updateCartBadge();
+        navigate('home');
+        document.getElementById('ign-input').value = '';
+    }
+
+    // --- Utils ---
+    function copyIP() {
+        navigator.clipboard.writeText('store.withersmp.net');
+        showToast('IP copied to clipboard!');
+    }
+
+    function showToast(msg) {
+        const toast = document.getElementById('toast');
+        toast.innerText = msg;
+        toast.classList.remove('translate-y-20', 'opacity-0');
+        setTimeout(() => {
+            toast.classList.add('translate-y-20', 'opacity-0');
+        }, 3000);
+    }
+
+    // --- Particle Canvas Background ---
+    function initParticles() {
+        const canvas = document.getElementById('particles-canvas');
+        const ctx = canvas.getContext('2d');
+        let width, height;
+        let particles = [];
+
+        function resize() {
+            width = canvas.width = canvas.offsetWidth;
+            height = canvas.height = canvas.offsetHeight;
+        }
+        window.addEventListener('resize', resize);
+        resize();
+
+        class Particle {
+            constructor() {
+                this.x = Math.random() * width;
+                this.y = Math.random() * height;
+                this.vx = (Math.random() - 0.5) * 1;
+                this.vy = (Math.random() - 0.5) * 1;
+                this.radius = Math.random() * 2 + 1;
+                this.color = Math.random() > 0.5 ? '#8b5cf6' : '#22d3ee';
+            }
+            update() {
+                this.x += this.vx;
+                this.y += this.vy;
+                if (this.x < 0 || this.x > width) this.vx *= -1;
+                if (this.y < 0 || this.y > height) this.vy *= -1;
+            }
+            draw() {
+                ctx.beginPath();
+                ctx.arc(this.x, this.y, this.radius, 0, Math.PI * 2);
+                ctx.fillStyle = this.color;
+                ctx.globalAlpha = 0.4;
+                ctx.fill();
+            }
+        }
+
+        for(let i=0; i<50; i++) particles.push(new Particle());
+
+        function animate() {
+            ctx.clearRect(0, 0, width, height);
+            particles.forEach(p => {
+                p.update();
+                p.draw();
+            });
+            requestAnimationFrame(animate);
+        }
+        animate();
+    }
+
+    // --- Chart.js Integration (Data Visualization) ---
+    function initChart() {
+        const ctx = document.getElementById('serverStatsChart').getContext('2d');
+        
+        // Gradient for line
+        const gradient = ctx.createLinearGradient(0, 0, 0, 400);
+        gradient.addColorStop(0, 'rgba(34, 211, 238, 0.5)'); // Cyan
+        gradient.addColorStop(1, 'rgba(34, 211, 238, 0.0)');
+        
+        const gradient2 = ctx.createLinearGradient(0, 0, 0, 400);
+        gradient2.addColorStop(0, 'rgba(139, 92, 246, 0.5)'); // Purple
+        gradient2.addColorStop(1, 'rgba(139, 92, 246, 0.0)');
+
+        new Chart(ctx, {
+            type: 'line',
+            data: {
+                labels: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'],
+                datasets: [
+                    {
+                        label: 'Active Players',
+                        data: [120, 150, 140, 180, 250, 400, 380],
+                        borderColor: '#22d3ee',
+                        backgroundColor: gradient,
+                        borderWidth: 2,
+                        tension: 0.4,
+                        fill: true,
+                        pointBackgroundColor: '#0b0b0f',
+                        pointBorderColor: '#22d3ee'
+                    },
+                    {
+                        label: 'Economy Transactions',
+                        data: [500, 600, 550, 700, 1100, 1800, 1600],
+                        borderColor: '#8b5cf6',
+                        backgroundColor: gradient2,
+                        borderWidth: 2,
+                        tension: 0.4,
+                        fill: true,
+                        yAxisID: 'y1',
+                        pointBackgroundColor: '#0b0b0f',
+                        pointBorderColor: '#8b5cf6'
+                    }
+                ]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                interaction: { mode: 'index', intersect: false },
+                plugins: {
+                    legend: { labels: { color: '#9ca3af', font: { family: 'Inter' } } },
+                    tooltip: {
+                        backgroundColor: 'rgba(11, 11, 15, 0.9)',
+                        titleColor: '#fff',
+                        bodyColor: '#cbd5e1',
+                        borderColor: 'rgba(255,255,255,0.1)',
+                        borderWidth: 1,
+                        padding: 10
+                    }
+                },
+                scales: {
+                    x: { grid: { color: 'rgba(255,255,255,0.05)' }, ticks: { color: '#9ca3af' } },
+                    y: { 
+                        type: 'linear', display: true, position: 'left',
+                        grid: { color: 'rgba(255,255,255,0.05)' }, ticks: { color: '#22d3ee' },
+                        title: { display: true, text: 'Players', color: '#9ca3af' }
+                    },
+                    y1: {
+                        type: 'linear', display: true, position: 'right',
+                        grid: { drawOnChartArea: false }, ticks: { color: '#8b5cf6' },
+                        title: { display: true, text: 'Transactions', color: '#9ca3af' }
+                    }
+                }
+            }
+        });
+    }
+
+    // --- Initialization ---
+    window.onload = () => {
+        // Init view
+        renderProductCards('featured-products-container', products.slice(0, 3));
+        initParticles();
+        initChart();
+    };
+
+</script>
+</body>
+</html>
